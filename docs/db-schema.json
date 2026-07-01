@@ -1,0 +1,28 @@
+{
+  "users": {
+    "description": "One row per registered account. Created via signup; login verifies the password against the stored hash.",
+    "columns": {
+      "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+      "username": "TEXT NOT NULL UNIQUE",
+      "password_hash": "TEXT NOT NULL",
+      "created_at": "TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)"
+    }
+  },
+  "boards": {
+    "description": "Exactly one board per user for the MVP. The whole board (columns + cards) is stored as a single JSON blob matching frontend/src/lib/kanban.ts's BoardData type.",
+    "columns": {
+      "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+      "user_id": "INTEGER NOT NULL UNIQUE REFERENCES users(id)",
+      "data": "TEXT NOT NULL",
+      "updated_at": "TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)"
+    },
+    "data_shape": {
+      "columns": [
+        { "id": "string", "title": "string", "cardIds": ["string"] }
+      ],
+      "cards": {
+        "<card-id>": { "id": "string", "title": "string", "details": "string" }
+      }
+    }
+  }
+}
