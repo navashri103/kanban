@@ -23,7 +23,7 @@ describe("AuthGate", () => {
     vi.stubGlobal("fetch", mockFetch(false));
     render(<AuthGate />);
 
-    expect(await screen.findByRole("heading", { name: /sign in/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /welcome back/i })).toBeInTheDocument();
   });
 
   it("shows the kanban board when there is an active session", async () => {
@@ -43,22 +43,22 @@ describe("AuthGate", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /log out/i }));
 
-    expect(await screen.findByRole("heading", { name: /sign in/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /welcome back/i })).toBeInTheDocument();
   });
 
   it("toggles to the signup form and back", async () => {
     vi.stubGlobal("fetch", mockFetch(false));
     render(<AuthGate />);
 
-    await screen.findByRole("heading", { name: /sign in/i });
+    await screen.findByRole("heading", { name: /welcome back/i });
     await userEvent.click(screen.getByRole("button", { name: /need an account/i }));
     expect(
-      await screen.findByRole("heading", { name: /create an account/i })
+      await screen.findByRole("heading", { name: /create your account/i })
     ).toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: /already have an account/i })
     );
-    expect(await screen.findByRole("heading", { name: /sign in/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /welcome back/i })).toBeInTheDocument();
   });
 });

@@ -1,12 +1,14 @@
-import { useState, type FormEvent } from "react";
+import { useState, type CSSProperties, type FormEvent } from "react";
+import { PlusIcon } from "@/components/icons";
 
 const initialFormState = { title: "", details: "" };
 
 type NewCardFormProps = {
+  accent: string;
   onAdd: (title: string, details: string) => void;
 };
 
-export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
+export const NewCardForm = ({ accent, onAdd }: NewCardFormProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [formState, setFormState] = useState(initialFormState);
 
@@ -20,6 +22,8 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
     setIsOpen(false);
   };
 
+  const focusStyle = { "--tw-ring-color": accent } as CSSProperties;
+
   return (
     <div className="mt-4">
       {isOpen ? (
@@ -30,7 +34,9 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
               setFormState((prev) => ({ ...prev, title: event.target.value }))
             }
             placeholder="Card title"
-            className="w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm font-medium text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
+            className="w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm font-medium text-[var(--navy-dark)] outline-none transition focus:ring-2"
+            style={focusStyle}
+            autoFocus
             required
           />
           <textarea
@@ -40,12 +46,14 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
             }
             placeholder="Details"
             rows={3}
-            className="w-full resize-none rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--gray-text)] outline-none transition focus:border-[var(--primary-blue)]"
+            className="w-full resize-none rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--gray-text)] outline-none transition focus:ring-2"
+            style={focusStyle}
           />
           <div className="flex items-center gap-2">
             <button
               type="submit"
-              className="rounded-full bg-[var(--secondary-purple)] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110"
+              className="rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110"
+              style={{ backgroundColor: accent }}
             >
               Add card
             </button>
@@ -65,8 +73,9 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="w-full rounded-full border border-dashed border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--primary-blue)] transition hover:border-[var(--primary-blue)]"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--stroke-strong)] px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--gray-text)] transition hover:border-transparent hover:bg-[var(--surface-muted)] hover:text-[var(--navy-dark)]"
         >
+          <PlusIcon className="h-3.5 w-3.5" />
           Add a card
         </button>
       )}

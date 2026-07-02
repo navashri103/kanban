@@ -64,6 +64,29 @@ describe("KanbanBoard", () => {
     expect(within(column).queryByText("New card")).not.toBeInTheDocument();
   });
 
+  it("renders icon-only delete buttons with accessible names", async () => {
+    render(<KanbanBoard />);
+    const column = await getFirstColumn();
+    const deleteButtons = within(column).getAllByRole("button", {
+      name: /^delete /i,
+    });
+    expect(deleteButtons.length).toBeGreaterThan(0);
+    for (const button of deleteButtons) {
+      expect(button).not.toHaveTextContent(/remove/i);
+      expect(button.querySelector("svg")).toBeInTheDocument();
+    }
+  });
+
+  it("shows a card count in each column header", async () => {
+    render(<KanbanBoard />);
+    const columns = await screen.findAllByTestId(/column-/i);
+    initialData.columns.forEach((column, index) => {
+      expect(
+        within(columns[index]).getByText(String(column.cardIds.length))
+      ).toBeInTheDocument();
+    });
+  });
+
   it("adds a column up to the max, then disables adding further", async () => {
     render(<KanbanBoard />);
     await screen.findAllByTestId(/column-/i);

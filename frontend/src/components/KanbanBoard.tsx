@@ -17,6 +17,7 @@ import { ChatSidebar } from "@/components/ChatSidebar";
 import { createId, moveCard, type BoardData, type Card } from "@/lib/kanban";
 import { fetchBoard, saveBoard } from "@/lib/board";
 import { logout } from "@/lib/auth";
+import { KanbanIcon, LogoutIcon, MinusIcon, PlusIcon } from "@/components/icons";
 
 type KanbanBoardProps = {
   onLogout?: () => void;
@@ -24,6 +25,21 @@ type KanbanBoardProps = {
 
 const MIN_COLUMNS = 1;
 const MAX_COLUMNS = 8;
+
+// Per-column accent, harmonised with the brand palette. Indexed by column order.
+const COLUMN_ACCENTS = [
+  "#209dd7", // blue
+  "#753991", // purple
+  "#ecad0a", // yellow
+  "#0ea5a3", // teal
+  "#e0537b", // rose
+  "#5b6bd6", // indigo
+  "#f97316", // orange
+  "#16a34a", // green
+];
+
+const accentFor = (index: number) =>
+  COLUMN_ACCENTS[index % COLUMN_ACCENTS.length];
 
 export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
   const [board, setBoard] = useState<BoardData | null>(null);
@@ -179,82 +195,88 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
     return null;
   }
 
-  return (
-    <div className="relative overflow-hidden">
-      <div className="pointer-events-none absolute left-0 top-0 h-[420px] w-[420px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.25)_0%,_rgba(32,157,215,0.05)_55%,_transparent_70%)]" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-[520px] w-[520px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.18)_0%,_rgba(117,57,145,0.05)_55%,_transparent_75%)]" />
+  const totalCards = Object.keys(cardsById).length;
 
-      <main className="relative mx-auto flex min-h-screen max-w-[1500px] flex-col gap-10 px-6 pb-16 pt-12">
-        <header className="flex flex-col gap-6 rounded-[32px] border border-[var(--stroke)] bg-white/80 p-8 shadow-[var(--shadow)] backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-6">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--gray-text)]">
-                Single Board Kanban
-              </p>
-              <h1 className="mt-3 font-display text-4xl font-semibold text-[var(--navy-dark)]">
+  return (
+    <div className="relative min-h-screen overflow-hidden">
+      <div className="pointer-events-none absolute left-0 top-0 h-[420px] w-[420px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.22)_0%,_rgba(32,157,215,0.04)_55%,_transparent_70%)]" />
+      <div className="pointer-events-none absolute bottom-0 right-0 h-[520px] w-[520px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.16)_0%,_rgba(117,57,145,0.04)_55%,_transparent_75%)]" />
+
+      <header className="sticky top-0 z-20 border-b border-[var(--stroke)] bg-white/70 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between gap-4 px-6">
+          <div className="flex items-center gap-3">
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-2xl text-white shadow-[var(--shadow-soft)]"
+              style={{ background: "var(--brand-gradient)" }}
+            >
+              <KanbanIcon className="h-5 w-5" />
+            </span>
+            <div className="leading-tight">
+              <h1 className="font-display text-lg font-semibold text-[var(--navy-dark)]">
                 Kanban Studio
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--gray-text)]">
-                Keep momentum visible. Rename columns, drag cards between stages,
-                and capture quick notes without getting buried in settings.
+              <p className="text-xs text-[var(--gray-text)]">
+                {board.columns.length} columns &middot; {totalCards} cards
               </p>
             </div>
-            <div className="flex items-start gap-4">
-              <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
-                  Columns
-                </p>
-                <div className="mt-2 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleRemoveColumn}
-                    disabled={
-                      board.columns.length <= MIN_COLUMNS ||
-                      (board.columns[board.columns.length - 1]?.cardIds.length ??
-                        0) > 0
-                    }
-                    aria-label="Remove a column"
-                    title="Removes the last column (must be empty)"
-                    className="rounded-full border border-[var(--stroke)] px-2.5 py-1 text-sm font-semibold text-[var(--navy-dark)] transition hover:border-[var(--primary-blue)] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    -
-                  </button>
-                  <span className="w-6 text-center text-lg font-semibold text-[var(--primary-blue)]">
-                    {board.columns.length}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleAddColumn}
-                    disabled={board.columns.length >= MAX_COLUMNS}
-                    aria-label="Add a column"
-                    title={`Up to ${MAX_COLUMNS} columns`}
-                    className="rounded-full border border-[var(--stroke)] px-2.5 py-1 text-sm font-semibold text-[var(--navy-dark)] transition hover:border-[var(--primary-blue)] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-full border border-[var(--stroke)] bg-[var(--surface)] p-1">
               <button
                 type="button"
-                onClick={handleLogout}
-                className="rounded-full border border-[var(--stroke)] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--gray-text)] transition hover:border-[var(--secondary-purple)] hover:text-[var(--secondary-purple)]"
+                onClick={handleRemoveColumn}
+                disabled={
+                  board.columns.length <= MIN_COLUMNS ||
+                  (board.columns[board.columns.length - 1]?.cardIds.length ??
+                    0) > 0
+                }
+                aria-label="Remove a column"
+                title="Removes the last column (must be empty)"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--navy-dark)] transition hover:bg-white hover:text-[var(--primary-blue)] hover:shadow-[var(--shadow-soft)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:shadow-none"
               >
-                Log out
+                <MinusIcon className="h-4 w-4" />
+              </button>
+              <span className="min-w-[3.5rem] text-center text-xs font-semibold text-[var(--navy-dark)]">
+                <span className="text-sm text-[var(--primary-blue)]">
+                  {board.columns.length}
+                </span>{" "}
+                cols
+              </span>
+              <button
+                type="button"
+                onClick={handleAddColumn}
+                disabled={board.columns.length >= MAX_COLUMNS}
+                aria-label="Add a column"
+                title={`Up to ${MAX_COLUMNS} columns`}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--navy-dark)] transition hover:bg-white hover:text-[var(--primary-blue)] hover:shadow-[var(--shadow-soft)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:shadow-none"
+              >
+                <PlusIcon className="h-4 w-4" />
               </button>
             </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              aria-label="Log out"
+              className="flex h-10 items-center gap-2 rounded-full border border-[var(--stroke)] px-4 text-xs font-semibold uppercase tracking-wide text-[var(--gray-text)] transition hover:border-[var(--secondary-purple)] hover:text-[var(--secondary-purple)]"
+            >
+              <LogoutIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Log out</span>
+            </button>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
-            {board.columns.map((column) => (
-              <div
-                key={column.id}
-                className="flex items-center gap-2 rounded-full border border-[var(--stroke)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--navy-dark)]"
-              >
-                <span className="h-2 w-2 rounded-full bg-[var(--accent-yellow)]" />
-                {column.title}
-              </div>
-            ))}
-          </div>
-        </header>
+        </div>
+      </header>
+
+      <main className="relative mx-auto max-w-[1600px] px-6 pb-16 pt-8">
+        <div className="mb-6">
+          <h2 className="font-display text-2xl font-semibold text-[var(--navy-dark)]">
+            Your board
+          </h2>
+          <p className="mt-1 text-sm text-[var(--gray-text)]">
+            Drag cards between stages, rename columns inline, and capture quick
+            notes as you go.
+          </p>
+        </div>
 
         <DndContext
           sensors={sensors}
@@ -262,28 +284,25 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <section
-            className="grid gap-6"
-            style={{
-              gridTemplateColumns: `repeat(${board.columns.length}, minmax(0, 1fr))`,
-            }}
-          >
-            {board.columns.map((column) => (
-              <KanbanColumn
-                key={column.id}
-                column={column}
-                cards={column.cardIds
-                  .map((cardId) => board.cards[cardId])
-                  .filter((card): card is Card => Boolean(card))}
-                onRename={handleRenameColumn}
-                onAddCard={handleAddCard}
-                onDeleteCard={handleDeleteCard}
-              />
+          <section className="board-scroll flex gap-5 overflow-x-auto pb-4">
+            {board.columns.map((column, index) => (
+              <div key={column.id} className="min-w-[300px] flex-1">
+                <KanbanColumn
+                  column={column}
+                  accent={accentFor(index)}
+                  cards={column.cardIds
+                    .map((cardId) => board.cards[cardId])
+                    .filter((card): card is Card => Boolean(card))}
+                  onRename={handleRenameColumn}
+                  onAddCard={handleAddCard}
+                  onDeleteCard={handleDeleteCard}
+                />
+              </div>
             ))}
           </section>
           <DragOverlay>
             {activeCard ? (
-              <div className="w-[260px]">
+              <div className="w-[280px] rotate-2">
                 <KanbanCardPreview card={activeCard} />
               </div>
             ) : null}
@@ -294,7 +313,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
       {saveFailed ? (
         <div
           role="alert"
-          className="fixed bottom-6 left-6 z-20 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 shadow-[var(--shadow)]"
+          className="fixed bottom-6 left-6 z-30 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 shadow-[var(--shadow)]"
         >
           Changes could not be saved. They will be retried with your next edit.
         </div>
