@@ -60,8 +60,9 @@ export const LoginForm = ({ mode, onSuccess, onToggleMode }: LoginFormProps) => 
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="Password"
+            placeholder={isSignup ? "Password (min 8 characters)" : "Password"}
             aria-label="Password"
+            minLength={isSignup ? 8 : undefined}
             className="w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
             required
           />

@@ -1,10 +1,14 @@
 export const fetchSession = async (): Promise<boolean> => {
-  const response = await fetch("/api/session", { credentials: "include" });
-  if (!response.ok) {
+  try {
+    const response = await fetch("/api/session", { credentials: "include" });
+    if (!response.ok) {
+      return false;
+    }
+    const data = await response.json();
+    return Boolean(data.authenticated);
+  } catch {
     return false;
   }
-  const data = await response.json();
-  return Boolean(data.authenticated);
 };
 
 export const login = async (

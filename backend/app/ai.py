@@ -1,11 +1,27 @@
+import asyncio
 import json
 import os
 from typing import Any
 
 import httpx
 
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemma-4-31b-it:free")
+# Google Gemini via its OpenAI-compatible endpoint. One reliable provider with
+# a real free tier (much higher daily limits than OpenRouter's free pool) and
+# verified strict json_schema structured-output support.
+GEMINI_API_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+)
+
+# Pinned to gemini-2.5-flash deliberately (probed 2026-07-02): the app makes
+# the model echo the full board back, and newer Flash models behind the
+# "gemini-flash-latest" alias consistently block that with the RECITATION
+# content filter (empty response). 2.5-flash handles it reliably.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+
+# Free-tier 429s (per-minute quota) usually clear quickly; one short retry
+# cycle rides them out without keeping the user waiting long.
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503}
+MAX_ATTEMPTS = 3
 
 # board_update's cards are an array (not a dict keyed by id) because strict
 # JSON Schema structured outputs can't express "object with arbitrary keys".
@@ -76,19 +92,45 @@ SYSTEM_PROMPT_TEMPLATE = (
 )
 
 
-async def ask_ai(message: str) -> str:
+async def _chat_completion(payload: dict[str, Any]) -> str:
+    request_json = {"model": GEMINI_MODEL, **payload}
     async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            OPENROUTER_API_URL,
-            headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
-            json={
-                "model": OPENROUTER_MODEL,
-                "messages": [{"role": "user", "content": message}],
-            },
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
+        for attempt in range(MAX_ATTEMPTS):
+            response = await client.post(
+                GEMINI_API_URL,
+                headers={
+                    "Authorization": f"Bearer {os.environ['GEMINI_API_KEY']}"
+                },
+                json=request_json,
+            )
+            if (
+                response.status_code in RETRYABLE_STATUS_CODES
+                and attempt + 1 < MAX_ATTEMPTS
+            ):
+                await asyncio.sleep(2**attempt)
+                continue
+            response.raise_for_status()
+            choice = response.json()["choices"][0]
+            content = choice["message"].get("content")
+            if not content:
+                # Gemini can return an empty message when a content filter
+                # fires (e.g. finish_reason "content_filter: RECITATION").
+                # Transient enough to be worth the remaining retries.
+                if attempt + 1 < MAX_ATTEMPTS:
+                    await asyncio.sleep(2**attempt)
+                    continue
+                raise ValueError(
+                    f"AI returned no content "
+                    f"(finish_reason: {choice.get('finish_reason')})"
+                )
+            return content
+    raise RuntimeError("unreachable: loop always returns or raises")
+
+
+async def ask_ai(message: str) -> str:
+    return await _chat_completion(
+        {"messages": [{"role": "user", "content": message}]}
+    )
 
 
 def _board_update_to_board_data(update: dict[str, Any]) -> dict[str, Any]:
@@ -104,23 +146,25 @@ async def chat_about_board(
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(board_json=json.dumps(board))
     messages = [{"role": "system", "content": system_prompt}, *history, {"role": "user", "content": message}]
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            OPENROUTER_API_URL,
-            headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
-            json={
-                "model": OPENROUTER_MODEL,
-                "messages": messages,
-                "response_format": {
-                    "type": "json_schema",
-                    "json_schema": CHAT_RESPONSE_SCHEMA,
-                },
-            },
-        )
-        response.raise_for_status()
-        content = response.json()["choices"][0]["message"]["content"]
+    payload = {
+        "messages": messages,
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": CHAT_RESPONSE_SCHEMA,
+        },
+    }
 
-    parsed = json.loads(content)
+    # Even schema-constrained models occasionally emit malformed JSON;
+    # that's a transient model failure, so ask once more before giving up.
+    for attempt in range(2):
+        content = await _chat_completion(payload)
+        try:
+            parsed = json.loads(content)
+            break
+        except json.JSONDecodeError:
+            if attempt == 1:
+                raise
+
     board_update = parsed.get("board_update")
     return {
         "reply": parsed["reply"],

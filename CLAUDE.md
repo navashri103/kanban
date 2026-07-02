@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A single-board Kanban project management app ("Kanban Studio"). Users sign up/sign in with a real
 username+password (bcrypt-hashed), get one persistent Kanban board (columns + cards, drag-and-drop,
-renameable columns, 1-8 columns), and can edit the board via an AI chat sidebar (OpenRouter, structured
+renameable columns, 1-8 columns), and can edit the board via an AI chat sidebar (Google Gemini, structured
 outputs). Everything runs as a single Docker container: Next.js is statically exported and served by
 FastAPI, which also owns all the API routes and a SQLite database.
 
@@ -39,7 +39,7 @@ Visit `http://localhost:8000`. Stop with `scripts/stop.sh` / `scripts/stop.ps1`.
 - Run all tests: `uv run pytest`
 - Run a single test file: `uv run pytest tests/test_board.py`
 - Run a single test: `uv run pytest tests/test_board.py::test_name`
-- Tests needing `OPENROUTER_API_KEY` (in `tests/test_ai.py`, `tests/test_ai_chat.py`) auto-skip if the
+- Tests needing `GEMINI_API_KEY` (in `tests/test_ai.py`, `tests/test_ai_chat.py`) auto-skip if the
   key isn't set.
 - Each test gets an isolated temp SQLite DB and cleared in-memory sessions (`tests/conftest.py`) — tests
   never touch your real local `pm.db`.
@@ -85,7 +85,7 @@ strictly same-origin (httpOnly cookie) — no CORS layer exists, so anything tha
 from a different origin (e.g. bare `next dev`) cannot authenticate.
 
 **AI board edits go through structured outputs, with a shape-conversion step.** `POST /api/ai/chat`
-(`app/ai.py: chat_about_board`) sends the current board JSON + user message + history to OpenRouter with
+(`app/ai.py: chat_about_board`) sends the current board JSON + user message + history to Gemini with
 a strict JSON Schema response format, forcing `{reply, board_update}`. Because JSON Schema can't express
 "object with arbitrary keys," the schema requires `board_update.cards` as an **array**, and
 `_board_update_to_board_data` converts it back into the dict-keyed `BoardData` shape the rest of the app

@@ -48,6 +48,50 @@ def test_two_users_have_independent_boards():
     assert bob_board["columns"][0]["title"] != "Alice's Column"
 
 
+def test_put_board_rejects_cardid_referencing_missing_card():
+    client = signed_up_client()
+    board = client.get("/api/board").json()
+    board["columns"][0]["cardIds"].append("card-does-not-exist")
+
+    response = client.put("/api/board", json=board)
+    assert response.status_code == 422
+    # The stored board is untouched.
+    assert "card-does-not-exist" not in client.get("/api/board").json()["columns"][0]["cardIds"]
+
+
+def test_put_board_rejects_card_key_mismatching_card_id():
+    client = signed_up_client()
+    board = client.get("/api/board").json()
+    board["cards"]["card-1"]["id"] = "card-other"
+
+    response = client.put("/api/board", json=board)
+    assert response.status_code == 422
+
+
+def test_put_board_rejects_card_in_two_columns():
+    client = signed_up_client()
+    board = client.get("/api/board").json()
+    board["columns"][1]["cardIds"].append(board["columns"][0]["cardIds"][0])
+
+    response = client.put("/api/board", json=board)
+    assert response.status_code == 422
+
+
+def test_put_board_rejects_zero_and_too_many_columns():
+    client = signed_up_client()
+    board = client.get("/api/board").json()
+
+    response = client.put("/api/board", json={"columns": [], "cards": {}})
+    assert response.status_code == 422
+
+    board["columns"] += [
+        {"id": f"col-extra-{i}", "title": "Extra", "cardIds": []} for i in range(4)
+    ]
+    assert len(board["columns"]) == 9
+    response = client.put("/api/board", json=board)
+    assert response.status_code == 422
+
+
 def test_board_data_is_read_from_disk_not_cached_in_memory():
     # Every db.py call opens and closes its own sqlite3 connection, so a brand
     # new client logging in fresh has no way to see this data except by

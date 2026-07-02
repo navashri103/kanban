@@ -7,6 +7,9 @@ export type ChatResult = {
   board_update: BoardData | null;
 };
 
+// The backend caps history at 50 messages; send the most recent ones.
+const MAX_HISTORY = 50;
+
 export const sendChatMessage = async (
   message: string,
   history: ChatMessage[]
@@ -15,7 +18,7 @@ export const sendChatMessage = async (
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history: history.slice(-MAX_HISTORY) }),
   });
   if (!response.ok) {
     return null;

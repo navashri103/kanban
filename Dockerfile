@@ -14,13 +14,16 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-COPY backend/pyproject.toml ./
-RUN uv sync
+COPY backend/pyproject.toml backend/uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
 
 COPY backend/app ./app
-COPY backend/tests ./tests
 COPY --from=frontend-builder /frontend/out ./static
+
+# No non-root USER: the SQLite file lives on the bind mount ./backend/data
+# (docker-compose.yml), which Docker Desktop exposes as root-owned — a
+# non-root user cannot write to it ("attempt to write a readonly database").
 
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "--frozen", "--no-dev", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

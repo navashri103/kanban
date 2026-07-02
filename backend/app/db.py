@@ -91,8 +91,12 @@ def save_board(user_id: int, data: dict[str, Any]) -> None:
     conn = get_connection()
     try:
         conn.execute(
-            "UPDATE boards SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-            (json.dumps(data), user_id),
+            """
+            INSERT INTO boards (user_id, data) VALUES (?, ?)
+            ON CONFLICT(user_id) DO UPDATE
+            SET data = excluded.data, updated_at = CURRENT_TIMESTAMP
+            """,
+            (user_id, json.dumps(data)),
         )
         conn.commit()
     finally:

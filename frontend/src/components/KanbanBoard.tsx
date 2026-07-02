@@ -14,7 +14,7 @@ import {
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { ChatSidebar } from "@/components/ChatSidebar";
-import { createId, moveCard, type BoardData } from "@/lib/kanban";
+import { createId, moveCard, type BoardData, type Card } from "@/lib/kanban";
 import { fetchBoard, saveBoard } from "@/lib/board";
 import { logout } from "@/lib/auth";
 
@@ -28,6 +28,7 @@ const MAX_COLUMNS = 8;
 export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
   const [board, setBoard] = useState<BoardData | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,20 +49,26 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
 
   const cardsById = useMemo(() => board?.cards ?? {}, [board]);
 
+  const persistBoard = async (next: BoardData) => {
+    const result = await saveBoard(next);
+    if (result === "unauthorized") {
+      // Session expired (e.g. backend restart): stop pretending edits save.
+      onLogout?.();
+      return;
+    }
+    setSaveFailed(result === "error");
+  };
+
   const updateBoard = (updater: (prev: BoardData) => BoardData) => {
-    setBoard((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const next = updater(prev);
-      if (next === prev) {
-        return prev;
-      }
-      saveBoard(next).catch(() => {
-        // Best-effort persistence; the UI already reflects the change locally.
-      });
-      return next;
-    });
+    if (!board) {
+      return;
+    }
+    const next = updater(board);
+    if (next === board) {
+      return;
+    }
+    setBoard(next);
+    void persistBoard(next);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -265,7 +272,9 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
               <KanbanColumn
                 key={column.id}
                 column={column}
-                cards={column.cardIds.map((cardId) => board.cards[cardId])}
+                cards={column.cardIds
+                  .map((cardId) => board.cards[cardId])
+                  .filter((card): card is Card => Boolean(card))}
                 onRename={handleRenameColumn}
                 onAddCard={handleAddCard}
                 onDeleteCard={handleDeleteCard}
@@ -281,6 +290,15 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
           </DragOverlay>
         </DndContext>
       </main>
+
+      {saveFailed ? (
+        <div
+          role="alert"
+          className="fixed bottom-6 left-6 z-20 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 shadow-[var(--shadow)]"
+        >
+          Changes could not be saved. They will be retried with your next edit.
+        </div>
+      ) : null}
 
       <ChatSidebar onBoardUpdate={(updatedBoard) => setBoard(updatedBoard)} />
     </div>

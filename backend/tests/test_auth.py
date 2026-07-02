@@ -1,5 +1,8 @@
+import time
+
 from fastapi.testclient import TestClient
 
+from app import auth
 from app.main import app
 
 
@@ -63,6 +66,35 @@ def test_login_with_unknown_username_is_rejected():
 def test_session_reports_unauthenticated_without_cookie():
     client = TestClient(app)
     assert client.get("/api/session").json() == {"authenticated": False}
+
+
+def test_signup_rejects_password_shorter_than_8_chars():
+    client = TestClient(app)
+    response = client.post(
+        "/api/signup", json={"username": "alice", "password": "short7c"}
+    )
+    assert response.status_code == 422
+
+
+def test_login_still_accepts_pre_existing_short_passwords():
+    # The 8-char minimum applies to signup only; login just checks the hash.
+    client = TestClient(app)
+    response = client.post(
+        "/api/login", json={"username": "nobody", "password": "x"}
+    )
+    assert response.status_code == 401  # unknown user, not 422
+
+
+def test_expired_session_is_rejected_and_removed():
+    client = TestClient(app)
+    client.post("/api/signup", json={"username": "alice", "password": "secret123"})
+    token = client.cookies["session"]
+
+    user_id, _ = auth._sessions[token]
+    auth._sessions[token] = (user_id, time.time() - 1)
+
+    assert client.get("/api/session").json() == {"authenticated": False}
+    assert token not in auth._sessions
 
 
 def test_logout_clears_session():

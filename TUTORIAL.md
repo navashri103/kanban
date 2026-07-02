@@ -36,7 +36,7 @@ The AI chat does something similar, except instead of you dragging a card, you t
 | Backend package manager | `uv` | Much faster than pip, replaces venv+pip+pip-tools with one tool |
 | Database | SQLite | Zero setup — it's just a file, no separate database server to run |
 | Password hashing | `bcrypt` | Industry-standard; the right way to never store real passwords |
-| AI provider | OpenRouter | One API key gives access to many AI models, including free ones |
+| AI provider | Google Gemini | Free tier, reliable structured outputs (replaced OpenRouter's flaky free pool) |
 | Packaging | Docker | The whole app (frontend + backend) runs as one container, same on any machine |
 | Testing | pytest (backend), Vitest + Playwright (frontend) | Standard tools for their ecosystems |
 
@@ -98,7 +98,7 @@ This is the most interesting part. Here's what happens when you type "Add a card
 1. The frontend sends your message, plus the conversation history so far, to `POST /api/ai/chat`.
 2. The backend loads your **current board** from SQLite.
 3. It builds a prompt for the AI that includes: your current board as JSON, then your message.
-4. It asks OpenRouter for a response, but with a twist: it doesn't just ask for free text. It uses a feature called **Structured Outputs**, which forces the AI to respond in a strict, pre-defined JSON shape:
+4. It asks Gemini for a response, but with a twist: it doesn't just ask for free text. It uses a feature called **Structured Outputs**, which forces the AI to respond in a strict, pre-defined JSON shape:
    ```json
    { "reply": "I've added the card.", "board_update": { "columns": [...], "cards": [...] } }
    ```
@@ -116,7 +116,7 @@ Three layers, each catching different kinds of bugs:
 - **Frontend unit tests (Vitest)** — test one component at a time, with the network mocked out (we don't want a real AI call every time we run a quick test).
 - **End-to-end tests (Playwright)** — drive an actual Chromium browser against the actual running Docker container. These caught real bugs during development — for example, a test that signed up, added a card, logged out, and logged back in caught a genuine issue where the login form stayed stuck in "sign up" mode after logout.
 
-Some tests make **real** calls to OpenRouter (no mocking) specifically to prove the AI integration genuinely works, not just that our code looks plausible.
+Some tests make **real** calls to the AI provider (no mocking) specifically to prove the AI integration genuinely works, not just that our code looks plausible.
 
 ## 9. Running it yourself
 
